@@ -1,0 +1,10 @@
+
+services:
+  - type: web
+    name: agenda-barbearia
+    runtime: docker
+    plan: free
+    region: oregon 
+    envVars:
+      - key: PORT
+        value: 3000

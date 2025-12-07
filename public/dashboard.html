@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Agenda Barbearia</title>
+    <link href="/css/output.css" rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+</head>
+
+<body class="bg-darker text-gray-200">
+
+    <!-- Top Nav -->
+    <nav class="bg-dark border-b border-gray-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 text-primary font-bold text-xl">
+                        BarberAgenda
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="userName" class="text-sm text-gray-400 hidden sm:block"></span>
+                    <button id="logoutBtn" class="text-gray-400 hover:text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24">
+
+        <!-- Stats Row -->
+
+
+        <!-- Action Bar -->
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-lg font-bold text-white">Horários Agendados</h2>
+            <button id="newAppointmentBtn"
+                class="bg-primary text-darker px-4 py-2 rounded-lg text-sm font-bold shadow-lg hover:bg-yellow-600 transition-colors">
+                + Novo
+            </button>
+        </div>
+
+        <!-- Appointment List -->
+        <div id="appointmentList" class="space-y-4">
+            <!-- Items injected by JS -->
+            <div class="text-center text-gray-500 py-8">Carregando...</div>
+        </div>
+
+        <!-- Clientes View (Hidden) -->
+        <div id="clientesView" class="hidden space-y-4">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-white">Gerenciar Clientes</h2>
+                <button onclick="openClienteModal()"
+                    class="bg-primary text-darker px-3 py-1 rounded-lg text-sm font-bold shadow-lg hover:bg-yellow-600">+
+                    Cliente</button>
+            </div>
+            <div id="clientesList" class="space-y-4">Loading...</div>
+        </div>
+
+        <!-- Ajustes View (Hidden) -->
+        <div id="ajustesView" class="hidden space-y-4">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-white">Serviços</h2>
+                <button onclick="openServicoModal()"
+                    class="bg-primary text-darker px-3 py-1 rounded-lg text-sm font-bold shadow-lg hover:bg-yellow-600">+
+                    Serviço</button>
+            </div>
+            <div id="servicosList" class="space-y-4">Loading...</div>
+        </div>
+
+
+    </main>
+
+    <!-- Bottom Nav (Mobile) -->
+    <div class="fixed bottom-0 left-0 w-full bg-dark border-t border-gray-800 pb-safe">
+        <div class="flex justify-around items-center h-16">
+            <button id="navAgenda"
+                class="flex flex-col items-center justify-center w-full h-full text-primary hover:text-white transition-colors">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                    </path>
+                </svg>
+                <span class="text-[10px] uppercase font-bold tracking-wider">Agenda</span>
+            </button>
+            <button id="navAgendar"
+                class="flex flex-col items-center justify-center w-full h-full text-gray-500 hover:text-white transition-colors">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z">
+                    </path>
+                </svg>
+                <span class="text-[10px] uppercase font-bold tracking-wider">Agendar</span>
+            </button>
+            <button id="navAjustes"
+                class="flex flex-col items-center justify-center w-full h-full text-gray-500 hover:text-white transition-colors">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                    </path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                <span class="text-[10px] uppercase font-bold tracking-wider">Ajustes</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal (Generic) -->
+    <div id="modal" class="fixed inset-0 bg-black/80 z-[100] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-dark w-full max-w-md rounded-2xl p-6 shadow-2xl border border-gray-800">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Novo Agendamento</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <form id="appointmentForm" class="space-y-4">
+                <!-- Fields injected via JS or static -->
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Nome do Cliente</label>
+                    <input type="text" id="clienteNome" placeholder="Digite o nome do cliente"
+                        class="w-full bg-darker border border-gray-700 rounded-lg p-2 text-white">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Serviço</label>
+                    <select id="servicoSelect"
+                        class="w-full bg-darker border border-gray-700 rounded-lg p-2 text-white"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Data</label>
+                        <input type="date" id="dataInput"
+                            class="w-full bg-darker border border-gray-700 rounded-lg p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Hora</label>
+                        <select id="horaInput"
+                            class="w-full bg-darker border border-gray-700 rounded-lg p-2 text-white">
+                            <option value="">Selecione a Data...</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit"
+                    class="w-full bg-primary text-darker font-bold py-3 rounded-lg mt-4">Confirmar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/api_client.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+
+</html>
