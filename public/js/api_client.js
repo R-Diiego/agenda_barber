@@ -30,7 +30,20 @@ async function request(endpoint, method = 'GET', body = null) {
             return null;
         }
 
-        const data = await response.json();
+        const text = await response.text();
+        let data;
+        try {
+            // Handle empty response
+            if (!text) return {};
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('Failed to parse JSON:', text);
+            console.error('Original Error:', e);
+            // If it's HTML, it might be an error page from the server/proxy
+            const isHtml = text.trim().startsWith('<');
+            const snippet = isHtml ? 'Received HTML response instead of JSON' : text.substring(0, 100);
+            throw new Error(`Resposta inválida do servidor (${response.status}): ${snippet}`);
+        }
 
         if (!response.ok) {
             throw new Error(data.message || data.error || 'Erro na requisição');

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'barber-agenda-v11';
+const CACHE_NAME = 'barber-agenda-v12';
 const ASSETS = [
     '/',
     '/index.html',

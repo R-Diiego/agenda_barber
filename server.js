@@ -10,9 +10,28 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
 app.use(cors());
 app.use(bodyParser.json());
+
+// Disable caching for all requests
+app.use((req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Global Error Handler for JSON parse errors
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+        return res.status(400).json({ message: 'Invalid JSON payload' });
+    }
+    next();
+});
 
 // Routes
 app.use('/api/auth', require('./src/routes/authRoutes'));

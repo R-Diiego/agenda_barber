@@ -1,25 +1,25 @@
 const db = require('../config/db');
 
 function run(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        db.run(sql, params, function (err) {
-            if (err) {
-                console.error('Error running sql ' + sql);
-                console.error(err);
-                reject(err);
-            } else {
-                resolve({ id: this.lastID });
-            }
-        });
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+      if (err) {
+        console.error('Error running sql ' + sql);
+        console.error(err);
+        reject(err);
+      } else {
+        resolve({ id: this.lastID });
+      }
     });
+  });
 }
 
 async function initDB() {
-    try {
-        console.log('Initializing SQLite database...');
+  try {
+    console.log('Initializing SQLite database...');
 
-        // Users
-        await run(`
+    // Users
+    await run(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nome TEXT NOT NULL,
@@ -30,8 +30,8 @@ async function initDB() {
       )
     `);
 
-        // Clientes
-        await run(`
+    // Clientes
+    await run(`
       CREATE TABLE IF NOT EXISTS clientes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -42,8 +42,8 @@ async function initDB() {
       )
     `);
 
-        // Servicos
-        await run(`
+    // Servicos
+    await run(`
       CREATE TABLE IF NOT EXISTS servicos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -55,8 +55,8 @@ async function initDB() {
       )
     `);
 
-        // Agendamentos
-        await run(`
+    // Agendamentos
+    await run(`
       CREATE TABLE IF NOT EXISTS agendamentos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -73,29 +73,29 @@ async function initDB() {
       )
     `);
 
-        // Seed Data (Optional, for testing)
-        // Check if admin exists
-        const row = await new Promise((resolve, reject) => {
-            db.get("SELECT * FROM users WHERE email = ?", ['admin@barber.com'], (err, row) => {
-                if (err) reject(err);
-                resolve(row);
-            });
-        });
+    // Seed Data (Optional, for testing)
+    // Check if admin exists
+    const row = await new Promise((resolve, reject) => {
+      db.get("SELECT * FROM users WHERE email = ?", ['admin@barber.com'], (err, row) => {
+        if (err) reject(err);
+        resolve(row);
+      });
+    });
 
-        if (!row) {
-            console.log("Creating admin user...");
-            // Password is '123456' hashed (bcrypt placeholder if we were using it, but for now simple for seed)
-            // In real app, we will use bcrypt in auth controller.
-            // For now, let's just insert a dummy user. Auth logic will come next.
-            // We will insert 'admin' later via API or Auth logic to be safe with hashes.
-        }
-
-        console.log('Database initialized successfully!');
-    } catch (error) {
-        console.error('Error initializing database:', error);
+    if (!row) {
+      console.log("Creating admin user...");
+      // Password is '123456' hashed (bcrypt placeholder if we were using it, but for now simple for seed)
+      // In real app, we will use bcrypt in auth controller.
+      // For now, let's just insert a dummy user. Auth logic will come next.
+      // We will insert 'admin' later via API or Auth logic to be safe with hashes.
     }
-    // Do not close db here as it might be used by the app if we were running it simultaneously, 
-    // but for script it's fine.
+
+    console.log('Database initialized successfully!');
+    process.exit(0);
+  } catch (error) {
+    console.error('Error initializing database:', error);
+    process.exit(1);
+  }
 }
 
 initDB();
