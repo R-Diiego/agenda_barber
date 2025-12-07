@@ -1,4 +1,4 @@
-const CACHE_NAME = 'barber-agenda-v12';
+const CACHE_NAME = 'barber-agenda-v13';
 const ASSETS = [
     '/',
     '/index.html',
@@ -7,7 +7,9 @@ const ASSETS = [
     '/js/app.js',
     '/js/auth.js',
     '/js/api_client.js',
-    '/manifest.json'
+    '/manifest.json',
+    '/assets/icon-192.png',
+    '/assets/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -39,18 +41,56 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    // Network first for API
-    if (event.request.url.includes('/api/')) {
-        event.respondWith(fetch(event.request));
+    const url = new URL(event.request.url);
+
+    // API Strategy: Network First, falling back to Cache
+    if (url.pathname.startsWith('/api/')) {
+        // Only cache GET requests
+        if (event.request.method === 'GET') {
+            event.respondWith(
+                fetch(event.request)
+                    .then((response) => {
+                        // Clone and cache the valid response
+                        if (response.ok) {
+                            const responseClone = response.clone();
+                            caches.open(CACHE_NAME).then((cache) => {
+                                cache.put(event.request, responseClone);
+                            });
+                        }
+                        return response;
+                    })
+                    .catch(() => {
+                        // Network failed, try cache
+                        return caches.match(event.request);
+                    })
+            );
+        } else {
+            // Non-GET requests (POST, PUT, DELETE) - just fetch, client handles error
+            event.respondWith(fetch(event.request));
+        }
         return;
     }
 
-    // Stale-while-revalidate for other assets (try cache, but update in background? 
-    // Or just Cache First as before? User wants "update everything". 
-    // Let's stick to Cache First but with the new version, it will re-cache everything on install.)
-
+    // Static Assets Strategy: Stale-While-Revalidate
+    // Serve from cache immediately, then update cache in background
     event.respondWith(
         caches.match(event.request)
-            .then((response) => response || fetch(event.request))
+            .then((cachedResponse) => {
+                const fetchPromise = fetch(event.request)
+                    .then((networkResponse) => {
+                        if (networkResponse.ok) {
+                            caches.open(CACHE_NAME).then((cache) => {
+                                cache.put(event.request, networkResponse.clone());
+                            });
+                        }
+                        return networkResponse;
+                    })
+                    .catch((err) => {
+                        // Network failed, nothing to update
+                        // console.log('Fetch failed, keeping cache', err);
+                    });
+
+                return cachedResponse || fetchPromise;
+            })
     );
 });
