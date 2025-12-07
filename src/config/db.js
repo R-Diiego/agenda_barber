@@ -1,17 +1,31 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { Pool } = require('pg');
 const dotenv = require('dotenv');
 
 dotenv.config();
 
-const dbPath = path.resolve(__dirname, '../../database.sqlite');
+const isProduction = process.env.NODE_ENV === 'production';
 
-const db = new sqlite3.Database(dbPath, (err) => {
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+    console.error('ERRO: DATABASE_URL não definida no arquivo .env ou variáveis de ambiente.');
+}
+
+const pool = new Pool({
+    connectionString: connectionString,
+    ssl: isProduction ? { rejectUnauthorized: false } : false,
+});
+
+// Test connection
+pool.connect((err, client, release) => {
     if (err) {
-        console.error('Error opening database ' + dbPath + ': ' + err.message);
+        console.error('Erro ao conectar no banco de dados:', err.stack);
     } else {
-        console.log('Connected to the SQLite database.');
+        console.log('Conectado ao banco de dados PostgreSQL com sucesso!');
+        release();
     }
 });
 
-module.exports = db;
+module.exports = {
+    query: (text, params) => pool.query(text, params),
+};

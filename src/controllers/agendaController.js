@@ -1,24 +1,5 @@
 const db = require('../config/db');
 
-// Helper to wrap db.all in promise
-function all(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
-    });
-}
-
-function run(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        db.run(sql, params, function (err) {
-            if (err) reject(err);
-            else resolve({ id: this.lastID, changes: this.changes });
-        });
-    });
-}
-
 exports.listAppointments = async (req, res) => {
     const { data, min_date } = req.query; // data = strict, min_date = >=
     let query = `
@@ -29,21 +10,24 @@ exports.listAppointments = async (req, res) => {
     WHERE a.status != 'cancelado'
   `;
     const params = [];
+    let paramIndex = 1;
 
     if (data) {
-        query += ' AND a.data = ?';
+        query += ` AND a.data = $${paramIndex}`;
         params.push(data);
+        paramIndex++;
     }
 
     if (min_date) {
-        query += ' AND a.data >= ?';
+        query += ` AND a.data >= $${paramIndex}`;
         params.push(min_date);
+        paramIndex++;
     }
 
     query += ' ORDER BY a.data ASC, a.hora ASC';
 
     try {
-        const rows = await all(query, params);
+        const { rows } = await db.query(query, params);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -57,18 +41,21 @@ exports.createAppointment = async (req, res) => {
     try {
         // If manual name provided, find or create client
         if (cliente_nome && !cliente_id) {
-            const existingClient = await all('SELECT id FROM clientes WHERE nome = ?', [cliente_nome]);
+            const { rows: existingClient } = await db.query('SELECT id FROM clientes WHERE nome = $1', [cliente_nome]);
             if (existingClient.length > 0) {
                 cliente_id = existingClient[0].id;
             } else {
-                const resultClient = await run('INSERT INTO clientes (user_id, nome) VALUES (?, ?)', [user_id, cliente_nome]);
-                cliente_id = resultClient.id;
+                const { rows: resultClient } = await db.query(
+                    'INSERT INTO clientes (user_id, nome) VALUES ($1, $2) RETURNING id',
+                    [user_id, cliente_nome]
+                );
+                cliente_id = resultClient[0].id;
             }
         }
 
         // Check for existing appointment
-        const existingAppointment = await all(
-            'SELECT id FROM agendamentos WHERE data = ? AND hora = ? AND status != "cancelado"',
+        const { rows: existingAppointment } = await db.query(
+            'SELECT id FROM agendamentos WHERE data = $1 AND hora = $2 AND status != \'cancelado\'',
             [data, hora]
         );
 
@@ -76,12 +63,13 @@ exports.createAppointment = async (req, res) => {
             return res.status(400).json({ error: 'Horário já reservado.' });
         }
 
-        const result = await run(
-            'INSERT INTO agendamentos (user_id, cliente_id, servico_id, data, hora, observacao) VALUES (?, ?, ?, ?, ?, ?)',
+        const { rows: result } = await db.query(
+            'INSERT INTO agendamentos (user_id, cliente_id, servico_id, data, hora, observacao) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
             [user_id, cliente_id, servico_id, data, hora, observacao]
         );
-        res.status(201).json({ id: result.id, message: 'Agendamento criado com sucesso' });
+        res.status(201).json({ id: result[0].id, message: 'Agendamento criado com sucesso' });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 };
@@ -89,7 +77,7 @@ exports.createAppointment = async (req, res) => {
 exports.cancelAppointment = async (req, res) => {
     const { id } = req.params;
     try {
-        await run('UPDATE agendamentos SET status = ? WHERE id = ?', ['cancelado', id]);
+        await db.query('UPDATE agendamentos SET status = $1 WHERE id = $2', ['cancelado', id]);
         res.json({ message: 'Agendamento cancelado com sucesso' });
     } catch (err) {
         res.status(500).json({ error: err.message });
