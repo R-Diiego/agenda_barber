@@ -191,6 +191,7 @@ const api = {
     post: (endpoint, body) => request(endpoint, 'POST', body),
     put: (endpoint, body) => request(endpoint, 'PUT', body),
     delete: (endpoint) => request(endpoint, 'DELETE'),
+    getQueue: () => [...offlineQueue] // Return copy of queue
 };
 
 // Initialize

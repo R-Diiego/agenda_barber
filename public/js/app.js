@@ -104,7 +104,38 @@ async function loadAppointments() {
     const date = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
     try {
-        const appointments = await api.get(`/agendamentos?min_date=${date}&_=${Date.now()}`);
+        const [appointments, servicos] = await Promise.all([
+            api.get(`/agendamentos?min_date=${date}&_=${Date.now()}`),
+            api.get('/servicos').catch(() => []) // Fetch services for name lookup
+        ]);
+
+        // Merge Offline Items
+        const queue = api.getQueue();
+        const pending = queue.filter(item => item.method === 'POST' && item.endpoint === '/agendamentos');
+
+        pending.forEach((item, idx) => {
+            const body = item.body;
+            // Find service name
+            const s = servicos.find(s => s.id == body.servico_id);
+            const servicoName = s ? s.nome : 'Serviço Offline';
+
+            // Construct fake appointment object
+            appointments.push({
+                id: `off-${Date.now()}-${idx}`,
+                data: body.data,
+                hora: body.hora,
+                cliente_nome: body.cliente_nome + ' (Pendente)',
+                servico_nome: servicoName,
+                duracao_minutos: s ? s.duracao_minutos : 30, // Default or lookup
+                isOffline: true
+            });
+        });
+
+        // Sort by Date and Time
+        appointments.sort((a, b) => {
+            if (a.data !== b.data) return a.data.localeCompare(b.data);
+            return a.hora.localeCompare(b.hora);
+        });
 
         if (appointments.length === 0) {
             list.innerHTML = `<div class="text-center text-gray-500 py-8">Nenhum agendamento futuro.</div>`;
@@ -122,10 +153,7 @@ async function loadAppointments() {
         Object.keys(grouped).forEach((dateKey, index) => {
             const dayApps = grouped[dateKey];
             const dateId = `date-${dateKey}`;
-            const isFirst = index === 0; // Expand first by default? User asked to click to expand, but usually today should be visible.
-            // Let's Collapse All by default to strictly follow request, or expand first for UX.
-            // "ao clicar na data ele expanda" -> implies closed. I'll leave closed. 
-            // Update: Better UX is to show Today open. i'll leave first open.
+            const isFirst = index === 0;
             const hiddenClass = isFirst ? '' : 'hidden';
             const rotateClass = isFirst ? 'rotate-180' : '';
 
@@ -144,19 +172,20 @@ async function loadAppointments() {
                 
                 <div id="${dateId}" class="mt-2 space-y-3 ${hiddenClass}">
                     ${dayApps.map(app => `
-                    <div class="bg-dark p-4 rounded-xl border border-gray-800 flex items-center justify-between ml-2">
+                    <div class="bg-dark p-4 rounded-xl border ${app.isOffline ? 'border-yellow-600/50' : 'border-gray-800'} flex items-center justify-between ml-2">
                         <div class="flex items-center space-x-4">
                             <div class="flex flex-col items-center bg-darker p-2 rounded-lg min-w-[60px]">
                                 <span class="text-primary font-bold text-lg">${app.hora.substring(0, 5)}</span>
                             </div>
                             <div>
-                                <h4 class="font-bold text-white">${app.cliente_nome}</h4>
+                                <h4 class="font-bold ${app.isOffline ? 'text-yellow-500' : 'text-white'}">${app.cliente_nome}</h4>
                                 <p class="text-sm text-gray-400">${app.servico_nome} • ${app.duracao_minutos} min</p>
                             </div>
                         </div>
+                        ${!app.isOffline ? `
                         <button onclick="cancelAppointment(${app.id})" class="text-red-500 hover:bg-red-500/10 p-2 rounded-full" title="Cancelar Agendamento">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </button>
+                        </button>` : `<span class="text-xs text-yellow-500 italic">Sincronizando...</span>`}
                     </div>
                     `).join('')}
                 </div>
@@ -246,7 +275,18 @@ async function loadTimeSlots(date) {
     try {
         // Fetch taken slots for this specific date
         const appointments = await api.get(`/agendamentos?data=${date}&_=${Date.now()}`);
-        const takenTimes = appointments.map(a => a.hora.substring(0, 5));
+        let takenTimes = appointments.map(a => a.hora.substring(0, 5));
+
+        // Add Offline Queue slots
+        const queue = api.getQueue();
+        const pendingForDate = queue.filter(item =>
+            item.method === 'POST' &&
+            item.endpoint === '/agendamentos' &&
+            item.body.data === date
+        );
+        pendingForDate.forEach(item => {
+            takenTimes.push(item.body.hora);
+        });
 
         const slots = [];
         // Generate slots from 08:00 to 20:00
